@@ -21,12 +21,9 @@ import {
   CommunicationsIcon,
   ContextIcon,
   DocumentIcon,
-  GavelIcon,
   GraduationCapIcon,
-  HazardIcon,
   HomeIcon,
   LogoutIcon,
-  ReportIcon,
   ReviewIcon,
   SafetyIcon,
   SettingsIcon,
@@ -58,38 +55,86 @@ export default async function DashboardLayout({
 
   // `module` is optional — only the items actually gated by role carry
   // one (see src/lib/roles.ts). Everything else is open to every role.
-  // Dashboard and My Items stay pinned at the top (most-used, orientation
-  // items), Settings stays pinned at the bottom (least-used, admin-only)
-  // — everything else in between is plain alphabetical by label, so a
-  // newly added module lands in a predictable spot without needing to
-  // think about where to insert it.
-  const allNavItems: { href: string; label: string; icon: React.ReactNode; module?: ModuleKey }[] = [
+  //
+  // Grouped into collapsible sections rather than one long flat
+  // alphabetical list (which had grown to 21+ items) — Dashboard/My Items
+  // stay pinned at the top, Settings pinned at the bottom, Safety stands
+  // alone (its own sub-pages already folded into tabs — see SafetyTabs —
+  // so it's just one entry, not a whole category), and everything else
+  // sits under a themed header a person can collapse if they don't touch
+  // it often. See sidebar-nav.tsx for how collapsing itself works.
+  type NavItemDef = { href: string; label: string; icon: React.ReactNode; module?: ModuleKey };
+
+  const topNavItems: NavItemDef[] = [
     { href: "/dashboard", label: "Dashboard", icon: <HomeIcon /> },
     { href: "/dashboard/my-items", label: "My Items", icon: <UserIcon /> },
-    { href: "/dashboard/authorization", label: "Authorization", icon: <AuthorizationIcon />, module: "authorization" },
-    { href: "/dashboard/change-control", label: "Change Control", icon: <ChangeControlIcon />, module: "changeControl" },
-    { href: "/dashboard/communications", label: "Communications", icon: <CommunicationsIcon />, module: "communications" },
-    { href: "/dashboard/context", label: "Context & Scope", icon: <ContextIcon />, module: "contextAndScope" },
-    { href: "/dashboard/documents", label: "Documents", icon: <DocumentIcon /> },
-    { href: "/dashboard/equipment", label: "Equipment", icon: <WrenchIcon /> },
-    { href: "/dashboard/safety/incidents", label: "Incidents", icon: <ReportIcon /> },
-    { href: "/dashboard/internal-audits", label: "Internal Audits", icon: <AuditIcon />, module: "internalAudits" },
-    { href: "/dashboard/safety/legal-register", label: "Legal Register", icon: <GavelIcon /> },
-    { href: "/dashboard/management-reviews", label: "Management Review", icon: <ReviewIcon />, module: "managementReview" },
-    { href: "/dashboard/non-conformances", label: "Non-Conformances", icon: <AlertIcon /> },
-    { href: "/dashboard/quality-policy", label: "Quality Policy", icon: <TargetIcon /> },
-    { href: "/dashboard/safety/risk-assessments", label: "Risk Assessments", icon: <HazardIcon /> },
-    { href: "/dashboard/risk-register", label: "Risk Register", icon: <BalanceIcon />, module: "riskRegister" },
+  ];
+
+  const standaloneNavItems: NavItemDef[] = [
     { href: "/dashboard/safety", label: "Safety", icon: <SafetyIcon /> },
-    { href: "/dashboard/safety/documents", label: "Safety Documents", icon: <DocumentIcon /> },
-    { href: "/dashboard/sops", label: "SOPs", icon: <SopIcon /> },
-    { href: "/dashboard/suppliers", label: "Suppliers", icon: <SupplierIcon />, module: "supplierRegister" },
-    { href: "/dashboard/training", label: "Training", icon: <GraduationCapIcon /> },
-    { href: "/dashboard/work-instructions", label: "Work Instructions", icon: <ChecklistIcon /> },
+  ];
+
+  const navSectionDefs: { id: string; label: string; items: NavItemDef[] }[] = [
+    {
+      id: "documents",
+      label: "Documents & Procedures",
+      items: [
+        { href: "/dashboard/documents", label: "Documents", icon: <DocumentIcon /> },
+        { href: "/dashboard/sops", label: "SOPs", icon: <SopIcon /> },
+        { href: "/dashboard/work-instructions", label: "Work Instructions", icon: <ChecklistIcon /> },
+        { href: "/dashboard/authorization", label: "Authorization", icon: <AuthorizationIcon />, module: "authorization" },
+        { href: "/dashboard/change-control", label: "Change Control", icon: <ChangeControlIcon />, module: "changeControl" },
+      ],
+    },
+    {
+      id: "planning",
+      label: "Planning & Policy",
+      items: [
+        { href: "/dashboard/quality-policy", label: "Quality Policy", icon: <TargetIcon /> },
+        { href: "/dashboard/context", label: "Context & Scope", icon: <ContextIcon />, module: "contextAndScope" },
+        { href: "/dashboard/risk-register", label: "Risk Register", icon: <BalanceIcon />, module: "riskRegister" },
+        { href: "/dashboard/communications", label: "Communications", icon: <CommunicationsIcon />, module: "communications" },
+      ],
+    },
+    {
+      id: "operations",
+      label: "Operations",
+      items: [
+        { href: "/dashboard/equipment", label: "Equipment", icon: <WrenchIcon /> },
+        { href: "/dashboard/suppliers", label: "Suppliers", icon: <SupplierIcon />, module: "supplierRegister" },
+        { href: "/dashboard/non-conformances", label: "Non-Conformances", icon: <AlertIcon /> },
+      ],
+    },
+    {
+      id: "reviews",
+      label: "Reviews & Audits",
+      items: [
+        { href: "/dashboard/internal-audits", label: "Internal Audits", icon: <AuditIcon />, module: "internalAudits" },
+        { href: "/dashboard/management-reviews", label: "Management Review", icon: <ReviewIcon />, module: "managementReview" },
+      ],
+    },
+    {
+      id: "people",
+      label: "People",
+      items: [{ href: "/dashboard/training", label: "Training", icon: <GraduationCapIcon /> }],
+    },
+  ];
+
+  const bottomNavItems: NavItemDef[] = [
     { href: "/dashboard/settings", label: "Settings", icon: <SettingsIcon />, module: "settings" },
   ];
 
-  const navItems = allNavItems.filter((item) => !item.module || canAccess(profile.role, item.module));
+  const filterByRole = (items: NavItemDef[]) =>
+    items.filter((item) => !item.module || canAccess(profile.role, item.module));
+
+  const topItems = filterByRole(topNavItems);
+  const standaloneItems = filterByRole(standaloneNavItems);
+  const sections = navSectionDefs.map((s) => ({ id: s.id, label: s.label, items: filterByRole(s.items) }));
+  const bottomItems = filterByRole(bottomNavItems);
+
+  // Flattened back out for the command palette, which just needs
+  // everything the current role can see, not the grouping.
+  const navItems = [...topItems, ...standaloneItems, ...sections.flatMap((s) => s.items), ...bottomItems];
 
   return (
     // Setting --brand here overrides the site-wide default (see
@@ -159,7 +204,7 @@ export default async function DashboardLayout({
         <CommandPalette navItems={navItems.map(({ href, label }) => ({ href, label }))} />
 
         <div className="mt-6 flex-1">
-          <SidebarNav items={navItems} />
+          <SidebarNav topItems={topItems} standaloneItems={standaloneItems} sections={sections} bottomItems={bottomItems} />
         </div>
 
         <div className="mt-4 border-t pt-3" style={{ borderColor: "var(--border)" }}>

@@ -4,6 +4,7 @@ import { legalCategoryLabel, LEGAL_STATUSES, legalStatusLabel, legalStatusTone }
 import { dateStatus } from "@/lib/dates";
 import { StatusBadge } from "@/components/status-badge";
 import { withParams } from "@/lib/list-controls";
+import { SafetyTabs } from "@/components/safety-tabs";
 
 const BASE_PATH = "/dashboard/safety/legal-register";
 
@@ -52,6 +53,8 @@ export default async function LegalRegisterPage({
 
   return (
     <div>
+      <SafetyTabs active="legal-register" />
+
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-[var(--text-primary)]">Legal & Regulatory Register</h1>

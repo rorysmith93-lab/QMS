@@ -13,6 +13,7 @@ import {
 } from "@/lib/safety-incidents";
 import { StatusBadge } from "@/components/status-badge";
 import { withParams } from "@/lib/list-controls";
+import { SafetyTabs } from "@/components/safety-tabs";
 
 const BASE_PATH = "/dashboard/safety/incidents";
 
@@ -95,6 +96,8 @@ export default async function SafetyIncidentsPage({
 
   return (
     <div>
+      <SafetyTabs active="incidents" />
+
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-[var(--text-primary)]">Incidents &amp; Near Misses</h1>

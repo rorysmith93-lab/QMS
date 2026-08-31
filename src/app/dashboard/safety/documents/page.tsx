@@ -4,6 +4,7 @@ import { safetyCategoryLabel, safetyStatusLabel, safetyStatusTone } from "@/lib/
 import { dateStatus } from "@/lib/dates";
 import { StatusBadge } from "@/components/status-badge";
 import { canAccess } from "@/lib/roles";
+import { SafetyTabs } from "@/components/safety-tabs";
 
 type SafetyDocumentRow = {
   id: string;
@@ -26,6 +27,8 @@ export default async function SafetyDocumentsPage() {
 
   return (
     <div>
+      <SafetyTabs active="documents" />
+
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-[var(--text-primary)]">Safety Documents</h1>

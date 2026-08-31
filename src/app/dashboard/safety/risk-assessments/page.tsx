@@ -3,6 +3,7 @@ import { requireProfile } from "@/lib/current-profile";
 import { riskAssessmentStatusLabel, riskAssessmentStatusTone, riskLevelFromScore } from "@/lib/risk-assessments";
 import { dateStatus } from "@/lib/dates";
 import { StatusBadge } from "@/components/status-badge";
+import { SafetyTabs } from "@/components/safety-tabs";
 
 type RiskAssessmentRow = {
   id: string;
@@ -28,6 +29,8 @@ export default async function RiskAssessmentsPage() {
 
   return (
     <div>
+      <SafetyTabs active="risk-assessments" />
+
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-[var(--text-primary)]">Risk Assessments</h1>

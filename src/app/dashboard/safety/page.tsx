@@ -3,6 +3,7 @@ import { requireProfile } from "@/lib/current-profile";
 import { dateStatus } from "@/lib/dates";
 import { isIncidentOverdue } from "@/lib/safety-incidents";
 import { riskBandFromScore } from "@/lib/risk-assessments";
+import { SafetyTabs } from "@/components/safety-tabs";
 
 export default async function SafetyOverviewPage() {
   const { supabase } = await requireProfile();
@@ -70,6 +71,8 @@ export default async function SafetyOverviewPage() {
 
   return (
     <div>
+      <SafetyTabs active="overview" />
+
       <h1 className="text-2xl font-bold text-[var(--text-primary)]">Safety Management System</h1>
       <p className="mt-1 text-sm text-muted">
         ISO 45001 — document control, legal compliance, and incident/CAPA tracking for occupational

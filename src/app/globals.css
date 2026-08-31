@@ -361,6 +361,27 @@ body {
     }
   }
 
+  /* Collapsible NAV SECTIONS (SidebarNav) — a different axis from the
+     icon-only collapse above: this is per-category, remembered in
+     localStorage, and purely declutters the full-width sidebar. Items
+     stay in the DOM either way (never conditionally unmounted) so
+     there's nothing to hydrate-mismatch — visibility is CSS-only,
+     driven by data-section-collapsed on the wrapping div. */
+  [data-section-collapsed="true"] .sidebar-section-items {
+    display: none;
+  }
+  /* But icon-only mode always wins: the whole point of collapsing the
+     sidebar to icons is fast access to everything, so a section someone
+     collapsed at full width doesn't get to hide icons here too — and the
+     header itself disappears instead, since there's no room for a label
+     to toggle. */
+  html[data-sidebar="collapsed"] [data-section-collapsed="true"] .sidebar-section-items {
+    display: flex;
+  }
+  html[data-sidebar="collapsed"] .sidebar-section-header {
+    display: none;
+  }
+
   /* Company logo in the sidebar header — a fixed HEIGHT with the width
      left free (up to a cap) rather than a fixed square, so a wide
      landscape logo renders at a legible size instead of being squeezed
