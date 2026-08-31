@@ -2,9 +2,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireProfile } from "@/lib/current-profile";
+import { attestWorkInstruction } from "@/app/dashboard/work-instructions/actions";
 import { PpeIcon } from "@/components/ppe-icons";
 import { ppeLabel, PpeKey } from "@/lib/ppe";
 import { fontOption } from "@/lib/work-instruction-font";
+import { AttestationPanel } from "@/components/attestation-panel";
 
 const IMAGE_BUCKET = "work-instruction-images";
 const EQUIPMENT_BUCKET = "equipment-images";
@@ -125,6 +127,27 @@ export default async function WorkInstructionViewPage({
 
   const isCurrent = version.id === wi.current_published_version_id;
 
+  // Only offered against the CURRENT published version — attesting to an
+  // older revision someone happens to be looking at wouldn't mean anything.
+  const { data: companyMembers } = await supabase
+    .from("profiles")
+    .select("id, full_name, email")
+    .eq("company_id", profile.company_id);
+  const memberList = companyMembers ?? [];
+
+  const { data: attestationRows } = isCurrent
+    ? await supabase
+        .from("work_instruction_attestations")
+        .select("profile_id, attested_at")
+        .eq("work_instruction_version_id", version.id)
+    : { data: [] as { profile_id: string; attested_at: string }[] };
+
+  const attestations = attestationRows ?? [];
+  const myAttestation = attestations.find((a) => a.profile_id === profile.id) ?? null;
+  const nameByMemberId = new Map(memberList.map((m) => [m.id, m.full_name || m.email]));
+  const attestedNames = attestations.map((a) => nameByMemberId.get(a.profile_id) ?? "Someone");
+  const boundAttest = isCurrent ? attestWorkInstruction.bind(null, id, version.id) : null;
+
   return (
     <div className="mx-auto max-w-3xl" style={{ fontFamily: fontOption(version.font).css }}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -188,6 +211,17 @@ export default async function WorkInstructionViewPage({
           <p className="banner-caution mt-4">This is an older version — not the current one.</p>
         )}
       </div>
+
+      {isCurrent && boundAttest && (
+        <AttestationPanel
+          attested={Boolean(myAttestation)}
+          attestedAt={myAttestation?.attested_at ?? null}
+          attestedCount={attestations.length}
+          totalMembers={memberList.length}
+          attestedNames={attestedNames}
+          onAttest={boundAttest}
+        />
+      )}
 
       {version.ppe_items?.length > 0 && (
         <div className="surface mt-6 p-6">

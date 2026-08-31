@@ -1,11 +1,12 @@
 import { requireProfile } from "@/lib/current-profile";
+import { attestQualityPolicy } from "@/app/dashboard/quality-policy/actions";
 import { objectiveStatusLabel, objectiveStatusTone } from "@/lib/quality-policy";
 import { StatusBadge } from "@/components/status-badge";
+import { AttestationPanel } from "@/components/attestation-panel";
 import { PublishPolicyForm } from "@/components/quality-policy/publish-policy-form";
 import { ObjectiveForm } from "@/components/quality-policy/objective-form";
 import { UpdateObjectiveForm } from "@/components/quality-policy/update-objective-form";
 import { canAccess } from "@/lib/roles";
-import { AccessDenied } from "@/components/access-denied";
 
 type Policy = {
   id: string;
@@ -33,9 +34,13 @@ export default async function QualityPolicyPage({
   const { error } = await searchParams;
   const { profile, supabase } = await requireProfile();
 
-  if (!canAccess(profile.role, "qualityPolicy")) {
-    return <AccessDenied />;
-  }
+  // Viewing (and attesting) is open to every role — everyone needs to be
+  // able to read the policy to acknowledge it (clause 7.3). Publishing a
+  // new version and managing objectives stays admin/quality_manager only,
+  // enforced here for the buttons below AND, more importantly, inside the
+  // actions themselves (see quality-policy/actions.ts) since the page no
+  // longer gates that implicitly for everyone.
+  const canEdit = canAccess(profile.role, "qualityPolicy");
 
   const [{ data: policies }, { data: objectives }, { data: members }] = await Promise.all([
     supabase
@@ -60,6 +65,18 @@ export default async function QualityPolicyPage({
   const memberList = members ?? [];
   const nameById = new Map(memberList.map((m) => [m.id, m.full_name || m.email]));
 
+  const { data: attestationRows } = current
+    ? await supabase
+        .from("quality_policy_attestations")
+        .select("profile_id, attested_at")
+        .eq("quality_policy_id", current.id)
+    : { data: [] as { profile_id: string; attested_at: string }[] };
+
+  const attestations = attestationRows ?? [];
+  const myAttestation = attestations.find((a) => a.profile_id === profile.id) ?? null;
+  const attestedNames = attestations.map((a) => nameById.get(a.profile_id) ?? "Someone");
+  const boundAttest = current ? attestQualityPolicy.bind(null, current.id) : null;
+
   return (
     <div className="mx-auto max-w-3xl">
       <h1 className="text-2xl font-bold text-[var(--text-primary)]">Quality Policy & Objectives</h1>
@@ -76,7 +93,12 @@ export default async function QualityPolicyPage({
       <div className="surface mt-6 p-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="font-semibold text-[var(--text-primary)]">Quality Policy</h2>
-          <PublishPolicyForm currentStatement={current?.statement ?? ""} approvedBy={current?.approved_by ?? profile.full_name ?? ""} />
+          {canEdit && (
+            <PublishPolicyForm
+              currentStatement={current?.statement ?? ""}
+              approvedBy={current?.approved_by ?? profile.full_name ?? ""}
+            />
+          )}
         </div>
 
         {!current ? (
@@ -118,13 +140,24 @@ export default async function QualityPolicyPage({
         )}
       </div>
 
+      {current && boundAttest && (
+        <AttestationPanel
+          attested={Boolean(myAttestation)}
+          attestedAt={myAttestation?.attested_at ?? null}
+          attestedCount={attestations.length}
+          totalMembers={memberList.length}
+          attestedNames={attestedNames}
+          onAttest={boundAttest}
+        />
+      )}
+
       <div className="surface mt-6 p-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="font-semibold text-[var(--text-primary)]">Quality Objectives</h2>
             <p className="mt-1 text-xs text-faint">Measurable goals, tracked to completion.</p>
           </div>
-          <ObjectiveForm members={memberList} />
+          {canEdit && <ObjectiveForm members={memberList} />}
         </div>
 
         {!objectives || objectives.length === 0 ? (
@@ -157,9 +190,11 @@ export default async function QualityPolicyPage({
                   </p>
                 )}
 
-                <div className="mt-3 border-t pt-3" style={{ borderColor: "var(--border)" }}>
-                  <UpdateObjectiveForm objective={objective} members={memberList} />
-                </div>
+                {canEdit && (
+                  <div className="mt-3 border-t pt-3" style={{ borderColor: "var(--border)" }}>
+                    <UpdateObjectiveForm objective={objective} members={memberList} />
+                  </div>
+                )}
               </li>
             ))}
           </ul>

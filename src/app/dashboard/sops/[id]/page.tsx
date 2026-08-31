@@ -5,6 +5,7 @@ import {
   addStep,
   approveSop,
   archiveSop,
+  attestSop,
   checkSop,
   deleteStep,
   moveStepDown,
@@ -18,6 +19,7 @@ import { ConfirmSubmitButton } from "@/app/dashboard/work-instructions/confirm-s
 import { statusLabel, statusTone } from "@/lib/documents";
 import { canActOnCategory, getWorkflowMode } from "@/lib/document-authorization";
 import { StatusBadge } from "@/components/status-badge";
+import { AttestationPanel } from "@/components/attestation-panel";
 
 type SopRow = {
   id: string;
@@ -113,6 +115,25 @@ export default async function SopBuilderPage({
     ? await supabase.from("profiles").select("id, full_name").in("id", trailProfileIds)
     : { data: [] as { id: string; full_name: string | null }[] };
   const trailNameById = new Map((trailProfiles ?? []).map((p) => [p.id, p.full_name || "Someone"]));
+
+  // Who's attested to the CURRENT version — versions are already ordered
+  // newest-first above, so versions[0] is it.
+  const currentVersion = (versions ?? [])[0] ?? null;
+  const { data: companyMembers } = await supabase
+    .from("profiles")
+    .select("id, full_name, email")
+    .eq("company_id", profile.company_id);
+  const memberList = companyMembers ?? [];
+
+  const { data: attestationRows } = currentVersion
+    ? await supabase.from("sop_attestations").select("profile_id, attested_at").eq("sop_version_id", currentVersion.id)
+    : { data: [] as { profile_id: string; attested_at: string }[] };
+
+  const attestations = attestationRows ?? [];
+  const myAttestation = attestations.find((a) => a.profile_id === profile.id) ?? null;
+  const nameByMemberId = new Map(memberList.map((m) => [m.id, m.full_name || m.email]));
+  const attestedNames = attestations.map((a) => nameByMemberId.get(a.profile_id) ?? "Someone");
+  const boundAttest = currentVersion ? attestSop.bind(null, sop.id, currentVersion.id) : null;
 
   const boundUpdateMeta = updateSopMeta.bind(null, sop.id);
   const boundAddStep = addStep.bind(null, sop.id);
@@ -213,6 +234,17 @@ export default async function SopBuilderPage({
               ? "Waiting on someone authorized to approve this category — see Authorization."
               : null}
         </p>
+      )}
+
+      {sop.status === "approved" && boundAttest && (
+        <AttestationPanel
+          attested={Boolean(myAttestation)}
+          attestedAt={myAttestation?.attested_at ?? null}
+          attestedCount={attestations.length}
+          totalMembers={memberList.length}
+          attestedNames={attestedNames}
+          onAttest={boundAttest}
+        />
       )}
 
       <form action={boundUpdateMeta} className="surface mt-4 space-y-4 p-6">

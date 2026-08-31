@@ -50,6 +50,7 @@ export const BalanceIcon = materialIcon("balance");
 export const SupplierIcon = materialIcon("local_shipping");
 export const ContextIcon = materialIcon("public");
 export const ChangeControlIcon = materialIcon("change_history");
+export const CommunicationsIcon = materialIcon("campaign");
 
 // Kept as hand-drawn SVG — unused anywhere in the app currently (not part
 // of "the menu"), so there's nothing to convert.

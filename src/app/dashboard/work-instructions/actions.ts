@@ -631,3 +631,18 @@ export async function archiveWorkInstruction(wiId: string) {
   revalidatePath("/dashboard/work-instructions");
   redirect(`/dashboard/work-instructions/${wiId}`);
 }
+
+// "I have read and understood this" — clause 7.3. Same reasoning as
+// attestDocument: insert-only, a repeat click is a harmless no-op against
+// the unique constraint.
+export async function attestWorkInstruction(wiId: string, workInstructionVersionId: string) {
+  const { profile, supabase } = await requireProfile();
+
+  await supabase.from("work_instruction_attestations").insert({
+    company_id: profile.company_id,
+    work_instruction_version_id: workInstructionVersionId,
+    profile_id: profile.id,
+  });
+
+  revalidatePath(`/dashboard/work-instructions/${wiId}/view`);
+}

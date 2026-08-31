@@ -5,6 +5,7 @@ import {
   addVersion,
   approveDocument,
   archiveDocument,
+  attestDocument,
   checkDocument,
   createRevision,
   returnToDraft,
@@ -18,6 +19,7 @@ import {
   statusTone,
 } from "@/lib/documents";
 import { StatusBadge } from "@/components/status-badge";
+import { AttestationPanel } from "@/components/attestation-panel";
 
 type DocumentRow = {
   id: string;
@@ -91,6 +93,31 @@ export default async function DocumentDetailPage({
     : { data: [] as { id: string; full_name: string | null }[] };
 
   const nameById = new Map((profiles ?? []).map((p) => [p.id, p.full_name || "Someone"]));
+
+  // Who's attested to the CURRENT version — see attestations_schema.sql.
+  // An older version's attestations don't count here even if they exist;
+  // that's the point of keying on document_version_id rather than
+  // document_id.
+  const { data: companyMembers } = await supabase
+    .from("profiles")
+    .select("id, full_name, email")
+    .eq("company_id", profile.company_id);
+  const memberList = companyMembers ?? [];
+
+  const { data: attestationRows } = document.current_version_id
+    ? await supabase
+        .from("document_attestations")
+        .select("profile_id, attested_at")
+        .eq("document_version_id", document.current_version_id)
+    : { data: [] as { profile_id: string; attested_at: string }[] };
+
+  const attestations = attestationRows ?? [];
+  const myAttestation = attestations.find((a) => a.profile_id === profile.id) ?? null;
+  const nameByMemberId = new Map(memberList.map((m) => [m.id, m.full_name || m.email]));
+  const attestedNames = attestations.map((a) => nameByMemberId.get(a.profile_id) ?? "Someone");
+  const boundAttest = document.current_version_id
+    ? attestDocument.bind(null, document.id, document.current_version_id)
+    : null;
 
   // Signed URLs let us serve files from a private bucket without making
   // them public — each link only works for a short time.
@@ -235,6 +262,21 @@ export default async function DocumentDetailPage({
               ? "Waiting on someone authorized to approve this category — see Authorization."
               : null}
         </p>
+      )}
+
+      {/* Not shown on a generated entry (see isGenerated above) — that
+          content has its own attestation panel on its own page (Work
+          Instructions/SOPs/Quality Policy), and attesting twice to the
+          same content under two different pages would just be confusing. */}
+      {!isGenerated && document.status === "approved" && boundAttest && (
+        <AttestationPanel
+          attested={Boolean(myAttestation)}
+          attestedAt={myAttestation?.attested_at ?? null}
+          attestedCount={attestations.length}
+          totalMembers={memberList.length}
+          attestedNames={attestedNames}
+          onAttest={boundAttest}
+        />
       )}
 
       <div className="surface mt-8 p-6">

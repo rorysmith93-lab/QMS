@@ -431,3 +431,20 @@ export async function returnToDraft(documentId: string) {
   revalidatePath("/dashboard/documents");
   redirect(`/dashboard/documents/${documentId}`);
 }
+
+// "I have read and understood this" — clause 7.3. Insert-only; a repeat
+// click (e.g. a race between two tabs) hits the unique constraint on
+// (document_version_id, profile_id) and is left as a no-op rather than
+// surfaced as an error, since the outcome — "this person has attested" —
+// is already true either way.
+export async function attestDocument(documentId: string, documentVersionId: string) {
+  const { profile, supabase } = await requireProfile();
+
+  await supabase.from("document_attestations").insert({
+    company_id: profile.company_id,
+    document_version_id: documentVersionId,
+    profile_id: profile.id,
+  });
+
+  revalidatePath(`/dashboard/documents/${documentId}`);
+}

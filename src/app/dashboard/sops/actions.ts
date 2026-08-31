@@ -467,3 +467,18 @@ export async function archiveSop(sopId: string) {
   revalidatePath("/dashboard/sops");
   redirect(`/dashboard/sops/${sopId}`);
 }
+
+// "I have read and understood this" — clause 7.3. Same reasoning as
+// attestDocument: insert-only, a repeat click is a harmless no-op against
+// the unique constraint.
+export async function attestSop(sopId: string, sopVersionId: string) {
+  const { profile, supabase } = await requireProfile();
+
+  await supabase.from("sop_attestations").insert({
+    company_id: profile.company_id,
+    sop_version_id: sopVersionId,
+    profile_id: profile.id,
+  });
+
+  revalidatePath(`/dashboard/sops/${sopId}`);
+}

@@ -8,11 +8,20 @@ import { requireProfile } from "@/lib/current-profile";
 import { QualityPolicyDocument } from "@/lib/pdf/quality-policy-document";
 import { downloadPdfLogoBuffer } from "@/lib/pdf/pdf-logo";
 import { syncGeneratedDocument } from "@/lib/generated-documents";
+import { canAccess } from "@/lib/roles";
 
 const VALID_STATUSES = ["not_started", "on_track", "at_risk", "achieved", "missed"];
 
 export async function publishPolicy(formData: FormData) {
   const { profile, supabase } = await requireProfile();
+
+  // The page itself is now open to every role (so everyone can read and
+  // attest to the policy — see quality-policy/page.tsx) — this check is
+  // what actually keeps publishing restricted, now that the page-level
+  // gate no longer implicitly covers these actions too.
+  if (!canAccess(profile.role, "qualityPolicy")) {
+    redirect(`/dashboard/quality-policy?error=${encodeURIComponent("Your role can't publish the quality policy.")}`);
+  }
 
   const statement = String(formData.get("statement") || "").trim();
   const effectiveDate = String(formData.get("effectiveDate") || "").trim();
@@ -86,6 +95,10 @@ export async function publishPolicy(formData: FormData) {
 export async function createObjective(formData: FormData) {
   const { profile, supabase } = await requireProfile();
 
+  if (!canAccess(profile.role, "qualityPolicy")) {
+    redirect(`/dashboard/quality-policy?error=${encodeURIComponent("Your role can't add quality objectives.")}`);
+  }
+
   const title = String(formData.get("title") || "").trim();
   const target = String(formData.get("target") || "").trim();
   const owner = String(formData.get("owner") || "");
@@ -112,8 +125,28 @@ export async function createObjective(formData: FormData) {
   redirect("/dashboard/quality-policy");
 }
 
+// "I have read and understood this" — clause 7.3. Open to every role
+// (unlike the actions above) — attesting isn't editing, and the whole
+// point is that everyone can do it. Insert-only; a repeat click is a
+// harmless no-op against the unique constraint.
+export async function attestQualityPolicy(qualityPolicyId: string) {
+  const { profile, supabase } = await requireProfile();
+
+  await supabase.from("quality_policy_attestations").insert({
+    company_id: profile.company_id,
+    quality_policy_id: qualityPolicyId,
+    profile_id: profile.id,
+  });
+
+  revalidatePath("/dashboard/quality-policy");
+}
+
 export async function updateObjective(objectiveId: string, formData: FormData) {
-  const { supabase } = await requireProfile();
+  const { profile, supabase } = await requireProfile();
+
+  if (!canAccess(profile.role, "qualityPolicy")) {
+    redirect(`/dashboard/quality-policy?error=${encodeURIComponent("Your role can't edit quality objectives.")}`);
+  }
 
   const title = String(formData.get("title") || "").trim();
   const target = String(formData.get("target") || "").trim();
