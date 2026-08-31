@@ -10,6 +10,7 @@ import {
   deleteStep,
   moveStepDown,
   moveStepUp,
+  notifySopApproved,
   returnSopToDraft,
   reviseSop,
   updateSopMeta,
@@ -55,10 +56,10 @@ export default async function SopBuilderPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; notified?: string }>;
 }) {
   const { id } = await params;
-  const { error } = await searchParams;
+  const { error, notified } = await searchParams;
   const { profile, supabase } = await requireProfile();
 
   const { data: sop } = await supabase
@@ -142,6 +143,7 @@ export default async function SopBuilderPage({
   const boundArchive = archiveSop.bind(null, sop.id);
   const boundReturnToDraft = returnSopToDraft.bind(null, sop.id);
   const boundRevise = reviseSop.bind(null, sop.id);
+  const boundNotify = notifySopApproved.bind(null, sop.id);
 
   const showCheckButton = workflowMode === "check_and_approve" && sop.status === "draft" && canCheck;
   const showApproveButton =
@@ -162,6 +164,11 @@ export default async function SopBuilderPage({
       {error && (
         <p role="alert" className="banner-error mt-4">
           {error}
+        </p>
+      )}
+      {notified && !error && (
+        <p role="status" className="banner-success mt-4">
+          Notified {notified} team member{notified === "1" ? "" : "s"} by email.
         </p>
       )}
 
@@ -206,6 +213,13 @@ export default async function SopBuilderPage({
             <form action={boundReturnToDraft}>
               <button type="submit" className="btn-secondary">
                 Return to draft
+              </button>
+            </form>
+          )}
+          {sop.status === "approved" && (
+            <form action={boundNotify}>
+              <button type="submit" className="btn-secondary">
+                Notify team
               </button>
             </form>
           )}

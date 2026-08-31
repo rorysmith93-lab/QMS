@@ -8,6 +8,7 @@ import {
   attestDocument,
   checkDocument,
   createRevision,
+  notifyDocumentApproved,
   returnToDraft,
 } from "@/app/dashboard/documents/actions";
 import { canActOnCategory, getWorkflowMode } from "@/lib/document-authorization";
@@ -53,10 +54,10 @@ export default async function DocumentDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; notified?: string }>;
 }) {
   const { id } = await params;
-  const { error } = await searchParams;
+  const { error, notified } = await searchParams;
   const { profile, supabase } = await requireProfile();
 
   const { data: document } = await supabase
@@ -143,6 +144,7 @@ export default async function DocumentDetailPage({
   const boundArchive = archiveDocument.bind(null, document.id);
   const boundReturnToDraft = returnToDraft.bind(null, document.id);
   const boundCreateRevision = createRevision.bind(null, document.id);
+  const boundNotify = notifyDocumentApproved.bind(null, document.id);
 
   // An auto-generated entry (see src/lib/generated-documents.ts) has its
   // whole lifecycle driven by its source — manual check/approve/archive/
@@ -174,6 +176,11 @@ export default async function DocumentDetailPage({
       {error && (
         <p role="alert" className="banner-error mt-4">
           {error}
+        </p>
+      )}
+      {notified && !error && (
+        <p role="status" className="banner-success mt-4">
+          Notified {notified} team member{notified === "1" ? "" : "s"} by email.
         </p>
       )}
 
@@ -233,6 +240,13 @@ export default async function DocumentDetailPage({
             <form action={boundReturnToDraft}>
               <button type="submit" className="btn-secondary">
                 Return to draft
+              </button>
+            </form>
+          )}
+          {!isGenerated && document.status === "approved" && (
+            <form action={boundNotify}>
+              <button type="submit" className="btn-secondary">
+                Notify team
               </button>
             </form>
           )}

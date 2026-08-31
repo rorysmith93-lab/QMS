@@ -8,6 +8,7 @@ import { isPpeKey } from "@/lib/ppe";
 import { canActOnCategory, getWorkflowMode } from "@/lib/document-authorization";
 import { buildWorkInstructionVersionPdf } from "@/lib/pdf/build-work-instruction-version-pdf";
 import { syncGeneratedDocument } from "@/lib/generated-documents";
+import { notifyTeamOfApproval } from "@/lib/notify";
 
 const IMAGE_BUCKET = "work-instruction-images";
 const EQUIPMENT_BUCKET = "equipment-images";
@@ -630,6 +631,32 @@ export async function archiveWorkInstruction(wiId: string) {
   revalidatePath(`/dashboard/work-instructions/${wiId}`);
   revalidatePath("/dashboard/work-instructions");
   redirect(`/dashboard/work-instructions/${wiId}`);
+}
+
+// Emails the team that this work instruction was published — see
+// src/lib/notify.ts.
+export async function notifyWorkInstructionApproved(wiId: string) {
+  const { profile, supabase } = await requireProfile();
+
+  const { data: wi } = await supabase.from("work_instructions").select("title").eq("id", wiId).single();
+  if (!wi) {
+    redirect(`/dashboard/work-instructions/${wiId}?error=${encodeURIComponent("Work instruction not found.")}`);
+  }
+
+  const result = await notifyTeamOfApproval(supabase, {
+    companyId: profile.company_id,
+    actorId: profile.id,
+    contentType: "work_instruction",
+    title: wi.title,
+    linkPath: `/dashboard/work-instructions/${wiId}/view`,
+  });
+
+  revalidatePath(`/dashboard/work-instructions/${wiId}`);
+  revalidatePath("/dashboard/communications");
+  if (result.error) {
+    redirect(`/dashboard/work-instructions/${wiId}?error=${encodeURIComponent(result.error)}`);
+  }
+  redirect(`/dashboard/work-instructions/${wiId}?notified=${result.sent}`);
 }
 
 // "I have read and understood this" — clause 7.3. Same reasoning as

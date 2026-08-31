@@ -6,6 +6,7 @@ import { requireProfile } from "@/lib/current-profile";
 import { canActOnCategory, getWorkflowMode } from "@/lib/document-authorization";
 import { buildSopPdf } from "@/lib/pdf/build-sop-pdf";
 import { syncGeneratedDocument } from "@/lib/generated-documents";
+import { notifyTeamOfApproval } from "@/lib/notify";
 
 // SOPs don't get their own separate authorization system — they're gated
 // by the same category-based matrix built for Document Control (see
@@ -466,6 +467,31 @@ export async function archiveSop(sopId: string) {
   revalidatePath(`/dashboard/sops/${sopId}`);
   revalidatePath("/dashboard/sops");
   redirect(`/dashboard/sops/${sopId}`);
+}
+
+// Emails the team that this SOP was approved — see src/lib/notify.ts.
+export async function notifySopApproved(sopId: string) {
+  const { profile, supabase } = await requireProfile();
+
+  const { data: sop } = await supabase.from("sops").select("title").eq("id", sopId).single();
+  if (!sop) {
+    redirect(`/dashboard/sops/${sopId}?error=${encodeURIComponent("SOP not found.")}`);
+  }
+
+  const result = await notifyTeamOfApproval(supabase, {
+    companyId: profile.company_id,
+    actorId: profile.id,
+    contentType: "sop",
+    title: sop.title,
+    linkPath: `/dashboard/sops/${sopId}`,
+  });
+
+  revalidatePath(`/dashboard/sops/${sopId}`);
+  revalidatePath("/dashboard/communications");
+  if (result.error) {
+    redirect(`/dashboard/sops/${sopId}?error=${encodeURIComponent(result.error)}`);
+  }
+  redirect(`/dashboard/sops/${sopId}?notified=${result.sent}`);
 }
 
 // "I have read and understood this" — clause 7.3. Same reasoning as

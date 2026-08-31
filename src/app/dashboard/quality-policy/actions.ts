@@ -8,6 +8,7 @@ import { requireProfile } from "@/lib/current-profile";
 import { QualityPolicyDocument } from "@/lib/pdf/quality-policy-document";
 import { downloadPdfLogoBuffer } from "@/lib/pdf/pdf-logo";
 import { syncGeneratedDocument } from "@/lib/generated-documents";
+import { notifyTeamOfApproval } from "@/lib/notify";
 import { canAccess } from "@/lib/roles";
 
 const VALID_STATUSES = ["not_started", "on_track", "at_risk", "achieved", "missed"];
@@ -123,6 +124,32 @@ export async function createObjective(formData: FormData) {
 
   revalidatePath("/dashboard/quality-policy");
   redirect("/dashboard/quality-policy");
+}
+
+// Emails the team that a new policy version was published — see
+// src/lib/notify.ts. Restricted the same as publishing itself, since it
+// sits alongside that button.
+export async function notifyQualityPolicyApproved() {
+  const { profile, supabase } = await requireProfile();
+
+  if (!canAccess(profile.role, "qualityPolicy")) {
+    redirect(`/dashboard/quality-policy?error=${encodeURIComponent("Your role can't send this notification.")}`);
+  }
+
+  const result = await notifyTeamOfApproval(supabase, {
+    companyId: profile.company_id,
+    actorId: profile.id,
+    contentType: "quality_policy",
+    title: "Quality Policy",
+    linkPath: "/dashboard/quality-policy",
+  });
+
+  revalidatePath("/dashboard/quality-policy");
+  revalidatePath("/dashboard/communications");
+  if (result.error) {
+    redirect(`/dashboard/quality-policy?error=${encodeURIComponent(result.error)}`);
+  }
+  redirect(`/dashboard/quality-policy?notified=${result.sent}`);
 }
 
 // "I have read and understood this" — clause 7.3. Open to every role

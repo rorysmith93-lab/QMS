@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { requireProfile } from "@/lib/current-profile";
 import { sanitizeFileName } from "@/lib/files";
 import { canActOnCategory, getWorkflowMode } from "@/lib/document-authorization";
+import { notifyTeamOfApproval } from "@/lib/notify";
 
 export async function createDocument(formData: FormData) {
   const { profile, supabase } = await requireProfile();
@@ -430,6 +431,31 @@ export async function returnToDraft(documentId: string) {
   revalidatePath(`/dashboard/documents/${documentId}`);
   revalidatePath("/dashboard/documents");
   redirect(`/dashboard/documents/${documentId}`);
+}
+
+// Emails the team that this document was approved — see src/lib/notify.ts.
+export async function notifyDocumentApproved(documentId: string) {
+  const { profile, supabase } = await requireProfile();
+
+  const { data: doc } = await supabase.from("documents").select("title").eq("id", documentId).single();
+  if (!doc) {
+    redirect(`/dashboard/documents/${documentId}?error=${encodeURIComponent("Document not found.")}`);
+  }
+
+  const result = await notifyTeamOfApproval(supabase, {
+    companyId: profile.company_id,
+    actorId: profile.id,
+    contentType: "document",
+    title: doc.title,
+    linkPath: `/dashboard/documents/${documentId}`,
+  });
+
+  revalidatePath(`/dashboard/documents/${documentId}`);
+  revalidatePath("/dashboard/communications");
+  if (result.error) {
+    redirect(`/dashboard/documents/${documentId}?error=${encodeURIComponent(result.error)}`);
+  }
+  redirect(`/dashboard/documents/${documentId}?notified=${result.sent}`);
 }
 
 // "I have read and understood this" — clause 7.3. Insert-only; a repeat

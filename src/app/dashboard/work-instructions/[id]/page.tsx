@@ -9,6 +9,7 @@ import {
   deleteStep,
   moveStepDown,
   moveStepUp,
+  notifyWorkInstructionApproved,
   publishWorkInstruction,
   returnWorkInstructionToDraft,
   reviseWorkInstruction,
@@ -55,10 +56,10 @@ export default async function WorkInstructionBuilderPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; notified?: string }>;
 }) {
   const { id } = await params;
-  const { error } = await searchParams;
+  const { error, notified } = await searchParams;
   const { profile, supabase } = await requireProfile();
 
   const companyLogoUrl = profile.companies?.logo_path
@@ -133,6 +134,7 @@ export default async function WorkInstructionBuilderPage({
   const boundUpdateRequirements = updateRequirements.bind(null, wi.id);
   const boundAddStep = addStep.bind(null, wi.id);
   const boundPublish = publishWorkInstruction.bind(null, wi.id);
+  const boundNotify = notifyWorkInstructionApproved.bind(null, wi.id);
   const boundCheck = checkWorkInstruction.bind(null, wi.id);
   const boundReturnToDraft = returnWorkInstructionToDraft.bind(null, wi.id);
   const boundRevise = reviseWorkInstruction.bind(null, wi.id);
@@ -157,6 +159,11 @@ export default async function WorkInstructionBuilderPage({
       {error && (
         <p role="alert" className="banner-error mt-4">
           {error}
+        </p>
+      )}
+      {notified && !error && (
+        <p role="status" className="banner-success mt-4">
+          Notified {notified} team member{notified === "1" ? "" : "s"} by email.
         </p>
       )}
 
@@ -223,6 +230,13 @@ export default async function WorkInstructionBuilderPage({
             <form action={boundReturnToDraft}>
               <button type="submit" className="btn-secondary">
                 Return to draft
+              </button>
+            </form>
+          )}
+          {wi.status === "approved" && (
+            <form action={boundNotify}>
+              <button type="submit" className="btn-secondary">
+                Notify team
               </button>
             </form>
           )}

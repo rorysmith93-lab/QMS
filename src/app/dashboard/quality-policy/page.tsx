@@ -1,5 +1,5 @@
 import { requireProfile } from "@/lib/current-profile";
-import { attestQualityPolicy } from "@/app/dashboard/quality-policy/actions";
+import { attestQualityPolicy, notifyQualityPolicyApproved } from "@/app/dashboard/quality-policy/actions";
 import { objectiveStatusLabel, objectiveStatusTone } from "@/lib/quality-policy";
 import { StatusBadge } from "@/components/status-badge";
 import { AttestationPanel } from "@/components/attestation-panel";
@@ -29,9 +29,9 @@ type Objective = {
 export default async function QualityPolicyPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; notified?: string }>;
 }) {
-  const { error } = await searchParams;
+  const { error, notified } = await searchParams;
   const { profile, supabase } = await requireProfile();
 
   // Viewing (and attesting) is open to every role — everyone needs to be
@@ -89,15 +89,29 @@ export default async function QualityPolicyPage({
           {error}
         </p>
       )}
+      {notified && !error && (
+        <p role="status" className="banner-success mt-4">
+          Notified {notified} team member{notified === "1" ? "" : "s"} by email.
+        </p>
+      )}
 
       <div className="surface mt-6 p-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="font-semibold text-[var(--text-primary)]">Quality Policy</h2>
           {canEdit && (
-            <PublishPolicyForm
-              currentStatement={current?.statement ?? ""}
-              approvedBy={current?.approved_by ?? profile.full_name ?? ""}
-            />
+            <div className="flex flex-wrap items-center gap-2">
+              {current && (
+                <form action={notifyQualityPolicyApproved}>
+                  <button type="submit" className="btn-secondary">
+                    Notify team
+                  </button>
+                </form>
+              )}
+              <PublishPolicyForm
+                currentStatement={current?.statement ?? ""}
+                approvedBy={current?.approved_by ?? profile.full_name ?? ""}
+              />
+            </div>
           )}
         </div>
 
