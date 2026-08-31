@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "qms-rapid-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 3000
+    },
+    {
+      "name": "maintenance-tracker-dev",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "cd '../Maintenance Tracker' && npm run dev"],
+      "port": 3001
+    }
+  ]
+}
