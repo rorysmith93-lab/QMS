@@ -26,6 +26,7 @@ const MODULE_ACCESS = {
   managementReview: ["admin", "quality_manager"],
   qualityPolicy: ["admin", "quality_manager"],
   contextAndScope: ["admin", "quality_manager"],
+  changeControl: ["admin", "quality_manager"],
   riskRegister: ["admin", "quality_manager"],
   supplierRegister: ["admin", "quality_manager"],
   authorization: ["admin", "quality_manager"],
