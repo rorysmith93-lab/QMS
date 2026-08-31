@@ -137,7 +137,7 @@ export function SidebarNav({
                 {collapsed ? "+" : "−"}
               </span>
             </button>
-            <div className="sidebar-section-items mt-0.5 flex flex-col gap-0.5">{section.items.map(renderItem)}</div>
+            <div className="sidebar-section-items">{section.items.map(renderItem)}</div>
           </div>
         );
       })}

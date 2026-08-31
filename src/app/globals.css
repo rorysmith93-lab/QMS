@@ -366,7 +366,20 @@ body {
      localStorage, and purely declutters the full-width sidebar. Items
      stay in the DOM either way (never conditionally unmounted) so
      there's nothing to hydrate-mismatch — visibility is CSS-only,
-     driven by data-section-collapsed on the wrapping div. */
+     driven by data-section-collapsed on the wrapping div.
+     The flex layout is declared HERE rather than via Tailwind's `flex`
+     utility class on the element — Tailwind v4 puts utility classes in a
+     layer that always wins a property conflict against this file's
+     @layer components, specificity aside, so a `display: none` below
+     would silently lose to a `flex` class sitting right next to it in
+     the JSX. Keeping every `display` declaration for this element in
+     the same layer is what actually makes toggling it work. */
+  .sidebar-section-items {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    margin-top: 0.125rem;
+  }
   [data-section-collapsed="true"] .sidebar-section-items {
     display: none;
   }
