@@ -3,6 +3,7 @@ import Link from "next/link";
 import { requireProfile } from "@/lib/current-profile";
 import { calibrationStatus } from "@/lib/calibration";
 import { StatusBadge } from "@/components/status-badge";
+import { EquipmentTabs } from "@/components/equipment-tabs";
 
 const IMAGE_BUCKET = "equipment-images";
 
@@ -79,6 +80,8 @@ export default async function EquipmentPage() {
           </Link>
         </div>
       </div>
+
+      <EquipmentTabs active="equipment" />
 
       {requiringCalibration.length > 0 && (
         <dl className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
